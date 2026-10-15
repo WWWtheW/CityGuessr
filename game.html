@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>CityGuessr</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script type="text/javascript" src="easyIDs.js"></script>
+  <!--<script type="text/javascript" src="mediumIDs.js"></script>
+  <script type="text/javascript" src="hardIDs.js"></script>-->
+  <script type="text/javascript" src="citylistMASTER.js"></script>
+  <script type="text/javascript" src="timezones.js"></script>
+  <script type="text/javascript" src="seed.js"></script>
+  <script type="text/javascript" src="maplibre-gl.js"></script>
+  <script type="text/javascript" src="API_KEY.js"></script>
+  <script type="text/javascript" src="map.js" defer></script>
+  <link rel="stylesheet" href="maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+<div id="choice" class="modal">
+  <div class="modal-content">
+    <h1>Welcome to CityGuessr!</h1>
+    <h3>by wwwDw (DM feedback on Discord!)</h3>
+    <button id="dailybutton" onclick="dailymode=true;setupgame()">Try the Daily Challenge!</button>
+    <h2>Or customize your game:</h2>
+    <h3>Choose your difficulty:</h3>
+    <div class="choicerow" id="difficulty-row">
+        <button class="choicebutton" onclick="selectDifficulty(0)">Easy</button>
+        <button class="choicebutton" onclick="selectDifficulty(1)" disabled>Medium</button>
+        <button class="choicebutton" onclick="selectDifficulty(2)" disabled>Hard</button>
+        <button class="choicebutton" onclick="selectDifficulty(3)">Extreme</button>
+    </div>
+    <h3>Choose your game mode:</h3>
+    <div class="choicerow" id="mode-row">
+        <button class="choicebutton" onclick="selectMode(0)" disabled>Normal</button>
+        <button class="choicebutton" onclick="selectMode(1)">Blind</button>
+        <button class="choicebutton" onclick="selectMode(2)">Blind/Rotated</button>
+        <button class="choicebutton" onclick="selectMode(3)">Blank</button>
+    </div>
+    <br><br>
+    <button id="playbutton" onclick="setupgame()" disabled>Play!</button>
+  </div>
+</div>
+  <div id="map"></div>
+  <div id="submitcity">
+    <input type="text" id="guess" name="Guess" placeholder="Enter a city..." autocomplete="off">
+    <button id="guessbutton" onclick="submitguess()">Guess</button>
+  </div>
+  <div id="cluelist2">
+    <div class="cluebox" id="population">Population: ???</div>
+    <div class="cluebox" id="elevation">Elevation: ???</div>
+  </div>
+  <div id="cluelist">
+    <div class="cluebox" id="firstletter">First letter: ???</div>
+    <div class="cluebox" id="country">Country: ???</div>
+    <div class="cluebox" id="timezone">Timezone: ???</div>
+    <div class="cluebox" id="distance" style="cursor:pointer" onclick="toggledistance()">??? mi</div>
+  </div>
+  <div id="topbar">
+    <div id="guesscount">Guess count: 0</div>
+    <details id="guesslog">
+      <summary id="guesslog-summary">Past Guesses (0)</summary>
+      <button id="sharebutton" onclick="shareResult()" style="display:none;">Share Result</button>
+      <div id="guesslog-scroll">
+        <table id="guesslog-table">
+          <tbody id="guesslog-list"></tbody>
+        </table>
+      </div>
+    </details>
+    <button id="giveupbutton" onclick="giveup()">Give Up</button>
+  </div>
+  <div id="toast"></div>
+  <script>
+// MODAL UI
+
+const choicemodal = document.getElementById("choice");
+const choicelist = Array.from(document.querySelectorAll(".choicebutton"));
+const playbutton = document.getElementById("playbutton");
+var dailymode = false;
+var difficulty = null;
+var mode = null;
+
+function selectDifficulty(num) {
+  for (let i=0;i<4;i++) {
+    choicelist[i].classList.remove("selected");
+  }
+  difficulty = num;
+  choicelist[num].classList.add("selected");
+
+  if (difficulty !== null && mode !== null) playbutton.disabled = false;
+};
+
+function selectMode(num) {
+  for (let i=4;i<8;i++) {
+    choicelist[i].classList.remove("selected");
+  }
+  mode = num;
+  choicelist[num+4].classList.add("selected");
+
+  if (difficulty !== null && mode !== null) playbutton.disabled = false;
+};
+
+window.addEventListener("map-ready", () => {
+  choicelist[4].disabled = false;
+});
+
+// SETUP
+
+var citydata = [];
+var citylist = [];
+var citymarkers = [];
+const popbuckets = [
+  {min: 1000000, label: "Metropolis"},
+  {min: 300000, label: "Major City"},
+  {min: 100000, label: "Regional City"},
+  {min: 10000, label: "Town"},
+  {min: 0, label: "Village"}
+];
+const elevbuckets = [
+  {min: 2000, label: "Mountain"},
+  {min: 1000, label: "Highland"},
+  {min: 300, label: "Upland"},
+  {min: 50, label: "Elevated"},
+  {min: 0, label: "Lowland"},
+  {min: -258, label: "Below Sea Level"}
+];
+const bucketSets = {
+  Population: popbuckets,
+  Elevation: elevbuckets
+};
+
+var pickedcityindex = -1;
+var pickedcitydata = {};
+var pickedcitypop = "";
+var pickedcityelev = "";
+
+const daytodiffmap = {
+  0: 3,
+  1: 0,
+  2: 0,
+  3: 1,
+  4: 1,
+  5: 2,
+  6: 2
+}
+
+function setupgame() {
+  const mapcanvas = document.querySelectorAll(".maplibregl-canvas")[0];
+  const mapctrl = document.querySelectorAll(".maplibregl-control-container")[0];
+
+  const rng = getDailyRng();
+
+  if (dailymode) {
+    difficulty = daytodiffmap[new Date().getUTCDay()];
+    mode = seededRandomInt(4, rng);
+  }
+
+  mapctrl.style.display = "none";
+
+  switch (difficulty) {
+    case 0: citydataMASTER.forEach((e) => {if (easyIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
+    case 1: citydataMASTER.forEach((e) => {if (mediumIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
+    case 2: citydataMASTER.forEach((e) => {if (hardIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
+    case 3: citydata = citydataMASTER; break;
+  }
+
+  switch (mode) {
+    case 0: break;
+    case 1: mapcanvas.style.display = "none"; break;
+    case 2:
+      mapcanvas.style.display = "none";
+      map.dragRotate.disable();
+      map.keyboard.disable()
+      map.touchZoomRotate.disableRotation();
+      map.rotateTo(Math.random() * 270 + 45, {duration: 0});
+      break;
+    case 3: document.getElementById("map").style.display = "none"; break;
+  }
+
+  if (dailymode && mode === 2) map.rotateTo(seededRandomInt(271, rng) + 45, {duration: 0});
+
+  for (const city of citydata) {
+    city["display_name"] = city["name"];
+    city["name"] = normalize(city["name"]);
+    try {city["alternate_names"] = city["alternate_names"].map(normalize);} catch {console.log("shut up")}
+  }
+
+  for (let i=0;i<citydata.length;i++) {
+    createMarker([citydata[i]["coordinates"]["lon"],citydata[i]["coordinates"]["lat"]],"blue");
+    citylist.push(citydata[i]["name"]);
+  }
+
+  if (!dailymode) pickedcityindex = Math.floor(Math.random() * citydata.length);
+  else {
+    pickedcityindex = seededRandomInt(citydata.length, rng);
+  }
+  pickedcitydata = citydata[pickedcityindex];
+
+  console.log(pickedcitydata["name"]);
+
+  pickedcitypop = getBucket("Population", pickedcitydata["population"]);
+  pickedcityelev = getBucket("Elevation", pickedcitydata["elevation"]);
+
+  choicemodal.style.display = "none";
+}
+
+// GAME
+
+var curdistmi = null;
+var curdistkm = null;
+var distmode = 0; // 0: mi, 1: km
+var guesscount = 0;
+var guessindexlist = new Set();
+
+const guessbox = document.getElementById("guess");
+const guessbutton = document.getElementById("guessbutton");
+const guesscountdisplay = document.getElementById("guesscount");
+
+function submitguess() {
+  const guess = normalize(guessbox.value);
+  console.log(guess);
+  if (guess === pickedcitydata["name"] || pickedcitydata["alternate_names"].includes(guess)) {
+    guesscount++;
+    guesscountdisplay.innerHTML = "Guess count: " + guesscount;
+    guessbox.style.backgroundColor = "lime";
+    citymarkers[pickedcityindex].remove();
+    createMarker([pickedcitydata["coordinates"]["lon"],pickedcitydata["coordinates"]["lat"]],"lime");
+    updateClues(pickedcitydata);
+    logGuess(pickedcitydata["display_name"], pickedcitydata["cou_name_en"], true);
+    endGame();
+    setTimeout(replay, 500);
+    setTimeout(dataissues, 4000);
+    return;
+  } else {
+    let cityfound = false;
+    let guessfound = false;
+    for (let i=0;i<citydata.length;i++) {
+      if (guess === citydata[i]["name"] || citydata[i]["alternate_names"].includes(guess)) {
+        if (!guessindexlist.has(i)) {
+          console.log("city matched")
+          cityfound = true;
+          guessindexlist.add(i);
+          citymarkers[i].remove();
+          createMarker([citydata[i]["coordinates"]["lon"],citydata[i]["coordinates"]["lat"]],"red");
+          updateClues(citydata[i]);
+          logGuess(citydata[i]["display_name"], citydata[i]["cou_name_en"], false);
+        } else guessfound = true;
+      }
+    }
+    if (cityfound) {
+      guesscount++;
+      guesscountdisplay.innerHTML = "Guess count: " + guesscount;
+      guessbox.style.backgroundColor = "lightgrey";
+    } else if (guessfound) {
+      guessbox.style.backgroundColor = "yellow";
+    } else {
+      guessbox.style.backgroundColor = "red";
+    }
+  }
+  guessbox.value = "";
+}
+
+function updateClues(data) {
+  // first letter
+  if (data["name"][0] === pickedcitydata["name"][0]) {
+    document.getElementById("firstletter").innerHTML = "First letter: "+pickedcitydata["name"][0].toUpperCase();
+  }
+  // country
+  if (data["cou_name_en"] === pickedcitydata["cou_name_en"]) {
+    document.getElementById("country").innerHTML = pickedcitydata["cou_name_en"];
+  }
+  // timezone
+  if (timezonedata[data["timezone"]] === timezonedata[pickedcitydata["timezone"]]) {
+    document.getElementById("timezone").innerHTML = timezonedata[pickedcitydata["timezone"]];
+  }
+  // distance
+  const ALat = data["coordinates"]["lat"];
+  const ALon = data["coordinates"]["lon"];
+  const BLat = pickedcitydata["coordinates"]["lat"];
+  const BLon = pickedcitydata["coordinates"]["lon"];
+  const disttmp = calcdist(ALat, ALon, BLat, BLon);
+  if (curdistkm === null || disttmp < curdistkm) {
+    curdistkm = disttmp;
+    curdistmi = 0.621371 * disttmp;
+  }
+  toggledistance(); toggledistance();
+  // population
+  if (getBucket("Population", data["population"]) === pickedcitypop) {
+    document.getElementById("population").innerHTML = pickedcitypop;
+  }
+  // elevation
+  if (getBucket("Elevation", data["elevation"]) === pickedcityelev) {
+    document.getElementById("elevation").innerHTML = pickedcityelev;
+  }
+}
+
+guessbox.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault(); 
+    submitguess();
+  }
+});
+
+// GAME UI
+
+var distdisplay = document.getElementById("distance");
+
+function toggledistance() { // change from mi to km or v.v.
+  distmode = 1 - distmode;
+  if (distmode == 0){
+    if (curdistmi === null) distdisplay.innerHTML = "??? mi";
+    else if (curdistmi === 0) distdisplay.innerHTML = "0 mi";
+    else distdisplay.innerHTML = "~" + downTo50(curdistmi) + " mi"
+  } else if (distmode == 1) {
+    if (curdistkm === null) distdisplay.innerHTML = "??? km";
+    else if (curdistkm === 0) distdisplay.innerHTML = "0 km";
+    else distdisplay.innerHTML = "~" + downTo50(curdistkm) + " km"
+  } else console.log("shut up")
+}
+
+function createMarker(coordinates, color) { // self-explanatory
+  const tempmarker = new maplibregl.Marker({color:color})
+    .setLngLat(coordinates)
+    .addTo(map);
+  if (color === "blue") citymarkers.push(tempmarker);
+}
+
+var guesslog = [];
+const guesslogSummary = document.getElementById("guesslog-summary");
+const guesslogList = document.getElementById("guesslog-list");
+
+function logGuess(name, country, correct) { // add guess to log
+  guesslog.push({name, country, correct});
+  const row = document.createElement("tr");
+  row.innerHTML = "<td>" + guesslog.length + "</td><td>" + name + "</td><td>" + country + "</td>";
+  row.style.color = correct ? "green" : "red";
+  guesslogList.prepend(row);
+  guesslogSummary.innerHTML = "Past Guesses (" + guesslog.length + ")";
+}
+
+function freezeInput() { // disable input / enter
+  guessbox.disabled = true;
+  guessbutton.disabled = true;
+}
+
+// GIVE UP / NEW GAME
+
+var gameover = false;
+var gaveup = false;
+const giveupbutton = document.getElementById("giveupbutton");
+
+function endGame() {
+  gameover = true;
+  freezeInput();
+
+  // update a couple clues
+  curdistkm = 0;
+  curdistmi = 0;
+  toggledistance(); toggledistance();
+  document.getElementById("population").innerHTML = "Population "+pickedcitydata["population"];
+  document.getElementById("elevation").innerHTML = "Elevation "+pickedcitydata["elevation"];
+
+  guesslogSummary.innerHTML = "Answer: " + pickedcitydata["display_name"];
+  giveupbutton.innerHTML = "New Game";
+  document.getElementById("sharebutton").style.display = "inline-block";
+  if (!gaveup) {
+    giveupbutton.style.backgroundColor = "lime";
+    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+  }
+  giveupbutton.onclick = () => location.reload();
+}
+
+function giveup() {
+  gaveup = true;
+  updateClues(pickedcitydata);
+  citymarkers[pickedcityindex].remove();
+  createMarker([pickedcitydata["coordinates"]["lon"],pickedcitydata["coordinates"]["lat"]],"orange");
+  endGame();
+}
+
+// GAME END
+
+const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme"];
+const modeLabels = ["Normal", "Blind", "Blind/Rotated", "Blank"];
+
+function shareResult() { // share result
+  var text;
+  const date = new Date();
+  const datestr = (date.getUTCMonth()+1)+"/"+date.getUTCDate();
+  const dateweekday = date.getUTCDay();
+  /*if (gaveup) {*/
+    text = `CityGuessr ${dailymode ? dateweekday + " " + datestr : "Practice"}\n${difficultyLabels[difficulty]} • ${modeLabels[mode]}\n`
+      + `${gaveup ? "❌ Gave up after" : "✅ Solved in"} ${guesscount} guess${guesscount === 1 ? "" : "es"}\n`
+      + `Can you beat me?\nhttps://tinyurl.com/City-Guessr`;
+  /*} else {
+    text = `I found the ${dailymode ? datestr+" " : ""}city in CityGuessr in `
+      + `${guesscount} guess${guesscount === 1 ? "" : "es"} `
+      + `(${difficultyLabels[difficulty]}, ${modeLabels[mode]} mode)! Can you beat me?\nhttps://tinyurl.com/City-Guessr`;
+  }*/
+
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Result copied to clipboard!");
+  });
+}
+
+function showToast(message, duration = 3000) {
+  const toast = document.getElementById("toast");
+  toast.innerHTML = message;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), duration);
+}
+
+function replay() {
+  showToast("🎉 You beat the game in " + guesscount + " guess" + (guesscount === 1 ? "" : "es") + "!");
+}
+
+function dataissues() {
+  showToast("Data issues? Shoot wwwDw a message on Discord!", 5000);
+}
+
+// HELPERS
+
+function calcdist(lat1, lon1, lat2, lon2) { // haversine formula
+  const R = 6371; // km
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  lat1 = toRad(lat1);
+  lat2 = toRad(lat2);
+
+  const a = Math.sin(dLat/2) ** 2 +
+    Math.sin(dLon/2) ** 2 * Math.cos(lat1) * Math.cos(lat2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  const d = R * c;
+  return d;
+}
+
+function toRad(Value) { // self-explanatory
+  return Value * Math.PI / 180;
+}
+
+function downTo50(num) { // round down to the nearest 50
+  return 50 * Math.floor(num / 50);
+}
+
+function shortNumber(num) { // shorten numbers
+  if (num >= 1e9 && num % 1e9 === 0) return Math.trunc(num / 1e9) + "B";
+  if (num >= 1e9) return (num / 1e9) + "B";
+  if (num >= 1e6 && num % 1e6 === 0) return Math.trunc(num / 1e6) + "M";
+  if (num >= 1e6) return (num / 1e6) + "M";
+  if (num >= 1e3 && num % 1e3 === 0) return Math.trunc(num / 1e3) + "K";
+  if (num >= 1e3) return (num / 1e3) + "K";
+  return String(num);
+}
+
+const accentmap = {ø:"o", ł:"l", ı:"i", đ:"d", ð:"d", æ:"ae", œ:"oe", ß:"ss", þ:"th", ħ:"h"};
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .replace(/[øłıđðæœßþħ]/g, c => accentmap[c])
+    .normalize("NFD")
+    .replace(/\p{Mn}/gu, "")
+    .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+function getBucket(type, num) {
+  const bucketdata = bucketSets[type];
+  if (!bucketdata) return "shut up";
+
+  bucketnum = bucketdata.length;
+
+  if (num >= bucketdata[0]["min"]) return bucketdata[0]["label"]+" ("+shortNumber(bucketdata[0]["min"])+"+"+(type === "Elevation" ? "m" : "")+")";
+  if (num < bucketdata[bucketnum-2]["min"]) return bucketdata[bucketnum-1]["label"]+" (<"+bucketdata[bucketnum-2]["min"]+(type === "Elevation" ? "m" : "")+")";
+  for (let i=1;i<bucketnum-1;i++) {
+    if (num >= bucketdata[i]["min"]) {
+      return bucketdata[i]["label"]+" ("+shortNumber(bucketdata[i]["min"])+"-"+shortNumber(bucketdata[i-1]["min"])+(type === "Elevation" ? "m" : "")+")";
+    }
+  }
+}
+  </script>
+</body>
+</html>

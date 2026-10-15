@@ -1,0 +1,321 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: black;
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+
+#submitcity {
+  position: absolute;
+  z-index: 2;
+  bottom: 14.5vh;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: fit-content;
+
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+#guess {
+  height: 10vh;
+  width: 30vw;
+  background-color: lightgrey;
+  text-align: center;
+  font-size: 5vh;
+  font-family: "Impact";
+
+  border: 3px solid #444;
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+#guessbutton {
+  height: 10vh;
+  width: 10vw;
+  background-color: lightgrey;
+  font-size: 5vh;
+  font-family: "Impact";
+
+  border: 3px solid #444;
+  border-radius: 0 10px 10px 0;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+#cluelist2 {
+  position: absolute;
+  z-index: 1;
+  bottom: 14.5vh;
+  left: 1vw;
+  right: 1vw;
+
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+#cluelist {
+  position: absolute;
+  z-index: 1;
+  bottom: 2vh;
+  left: 1vw;
+  right: 1vw;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1vw;
+}
+
+.cluebox {
+  display: inline-block;
+  height: 10vh;
+  line-height: 10vh;
+  width: 100%;
+  border-radius: 10px;
+  background-color: lightgrey;
+  font-size: 3vh;
+  font-family: "Impact";
+  text-align: center;
+  justify-self: center;
+}
+
+#population {
+  grid-column: 1;
+  width: 27.5vw;
+}
+
+#elevation {
+  grid-column: 4;
+  width: 27.5vw;
+}
+
+#topbar {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+#guesscount {
+  width: 24vw;
+  border-radius: 10px;
+  border-top-left-radius: 0;
+  height: 10vh;
+  line-height: 10vh;
+  background-color: lightgrey;
+  font-size: 3vh;
+  font-family: "Impact";
+  text-align: center;
+}
+
+#giveupbutton {
+  width: 24vw;
+  border-radius: 10px;
+  border-top-right-radius: 0;
+  height: 10vh;
+  line-height: 10vh;
+  background-color: orange;
+  font-size: 3vh;
+  font-family: "Impact";
+  text-align: center;
+  cursor: pointer;
+  border: none;
+}
+
+#guesslog {
+  width: 32vw;
+  border-radius: 10px;
+  background-color: lightgrey;
+  font-family: "Impact";
+  text-align: center;
+}
+
+#guesslog summary {
+  height: 10vh;
+  line-height: 10vh;
+  font-size: 3vh;
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+}
+#guesslog summary::-webkit-details-marker {
+  display: none;
+}
+
+#guesslog summary::after {
+  content: "";
+  position: absolute;
+  right: 2vw;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 0.5em solid transparent;
+  border-right: 0.5em solid transparent;
+  border-top: 0.5em solid #444;
+  transform: translateY(-50%) rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+#guesslog[open] summary::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+#guesslog[open] summary {
+  border-bottom: 2px solid #444;
+}
+
+#guesslog-scroll {
+  max-height: 40vh;
+  overflow-y: auto;
+  background-color: white;
+  border-radius: 0 0 10px 10px;
+}
+
+#guesslog-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#guesslog-table td {
+  padding: 1vh 0.5vw;
+  font-size: 2vh;
+  text-align: center;
+  border-bottom: 1px solid #ccc;
+}
+
+#guesslog-table td:first-child {
+  width: 15%;
+  color: black;
+}
+
+#sharebutton {
+  display: none;
+  width: 100%;
+  padding: 1vh 0;
+  font-size: 2.5vh;
+  font-family: "Impact";
+  background-color: lightblue;
+  border: none;
+  border-top: 2px solid #444;
+  cursor: pointer;
+}
+
+/* selection screen */
+
+.modal {
+  position: fixed; /* Stay in place */
+  z-index: 100; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow-y: auto; /* Enable scroll if needed */
+  background-color: rgba(0,0,0); /* Black w/ opacity */
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  margin: 0;
+  padding-top: 3vh;
+  padding-bottom: 3vh;
+  border: 1px solid #888;
+  width: 75vw;
+  text-align: center;
+  background-color: black;
+  color: white;
+  font-family: "Comic Sans MS";
+  border-radius: 15px;
+}
+
+.modal-content>h1 {
+  font-size: 4em;
+  margin-top: 0em;
+  margin-bottom: -0.3em;
+}
+
+.modal-content>h2 {
+  font-size: 2em;
+}
+
+.modal-content>h3 {
+  font-size: 1.5em;
+}
+
+.choicerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+}
+
+.choicebutton, #playbutton, #dailybutton {
+  background-color: lightgrey;
+  height: 10vh;
+  width: 17.5vw;
+  border: none;
+  border-radius: 5px;
+  font-size: 2em;
+  cursor: pointer;
+  font-family: "Comic Sans MS";
+}
+
+#dailybutton {
+  width: 25vw;
+}
+
+.choicebutton.selected {
+  background-color: lime;
+}
+
+#playbutton:disabled, .choicebutton:disabled {
+  opacity: 50%;
+  cursor: not-allowed;
+}
+
+/* game end */
+
+#toast {
+  position: fixed;
+  top: 15vh;
+  left: 50%;
+  transform: translate(-50%, -10px);
+  z-index: 2;
+  background-color: black;
+  color: white;
+  font-family: "Comic Sans MS";
+  font-size: 2.5vh;
+  padding: 2vh 3vw;
+  border-radius: 15px;
+  border: 1px solid #888;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
