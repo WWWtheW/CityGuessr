@@ -37,32 +37,6 @@ const map = new maplibregl.Map({
       "layout": {"visibility": "visible"}
     },
     {
-      "id": "place_label_other",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "place",
-      "minzoom": 8,
-      "filter": [
-        "all",
-        ["==", "$type", "Point"],
-        ["!in", "class", "city", "state", "country", "continent"]
-      ],
-      "layout": {
-        "text-anchor": "center",
-        "text-field": "{name:latin}\n{name:nonlatin}",
-        "text-font": ["Noto Sans Regular"],
-        "text-max-width": 6,
-        "text-size": {"stops": [[6, 10], [12, 14]]},
-        "visibility": "visible"
-      },
-      "paint": {
-        "text-color": "hsl(0, 10%, 25%)",
-        "text-halo-blur": 0,
-        "text-halo-color": "hsl(0, 0%, 100%)",
-        "text-halo-width": 2
-      }
-    },
-    {
       "id": "place-continent",
       "type": "symbol",
       "source": "openmaptiles",
