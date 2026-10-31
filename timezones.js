@@ -68,7 +68,7 @@ const timezonedata={
   "America/Cuiaba": "UTC-4",
   "America/Curacao": "UTC-4",
   "America/Dominica": "UTC-4",
-  "America/Glace_Bay": "UTC-4",
+  "America/Goose_Bay": "UTC-4",
   "America/Grenada": "UTC-4",
   "America/Guadeloupe": "UTC-4",
   "America/Guyana": "UTC-4",
@@ -338,6 +338,7 @@ const timezonedata={
   "Pacific/Bougainville": "UTC+11",
   "Pacific/Efate": "UTC+11",
   "Pacific/Guadalcanal": "UTC+11",
+  "Pacific/Norfolk": "UTC+11",
   "Pacific/Noumea": "UTC+11",
   "Pacific/Pohnpei": "UTC+11",
   "Antarctica/McMurdo": "UTC+12",
@@ -350,7 +351,7 @@ const timezonedata={
   "Pacific/Nauru": "UTC+12",
   "Pacific/Tarawa": "UTC+12",
   "Pacific/Wallis": "UTC+12",
-  "Pacific/Chatham": "UTC+12:45",
   "Pacific/Apia": "UTC+13",
+  "Pacific/Fakaofo": "UTC+13",
   "Pacific/Tongatapu": "UTC+13"
 };
