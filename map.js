@@ -1,6 +1,4 @@
-const map = new maplibregl.Map({
-  container: 'map',
-  style: {
+const visiblestyle = {
   "version": 8,
   "name": "CityGuessr",
   "metadata": {
@@ -207,11 +205,16 @@ const map = new maplibregl.Map({
     }
   ],
   "id": "ciwigmbgt00fw2ps58s6klalp"
-},
-maxZoom: 10,
-});
-map.addControl(new maplibregl.NavigationControl());
+};
 
-map.once("idle", () => {
-  window.dispatchEvent(new Event("map-ready"));
-});
+const blankstyle = {
+  version: 8,
+  sources: {},
+  layers: [{id: "bg", type: "background", paint: {"background-color": "black"}}]
+};
+
+var map = null;
+function createmap(style) {
+  map = new maplibregl.Map({container: "map", style: style, maxZoom: 10});
+  return map;
+};
