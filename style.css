@@ -31,7 +31,7 @@ body {
   background-color: lightgrey;
   text-align: center;
   font-size: 5vh;
-  font-family: "Impact";
+  font-family: "Impact", "Haettenschweiler", "Arial Narrow Bold", sans-serif;
 
   border: 3px solid #444;
   border-right: none;
@@ -47,7 +47,7 @@ body {
   width: 10vw;
   background-color: lightgrey;
   font-size: 5vh;
-  font-family: "Impact";
+  font-family: "Impact", "Haettenschweiler", "Arial Narrow Bold", sans-serif;
 
   border: 3px solid #444;
   border-radius: 0 10px 10px 0;
@@ -89,7 +89,7 @@ body {
   border-radius: 10px;
   background-color: lightgrey;
   font-size: 3vh;
-  font-family: "Impact";
+  font-family: "Impact", "Haettenschweiler", "Arial Narrow Bold", sans-serif;
   text-align: center;
   justify-self: center;
 }
@@ -123,7 +123,7 @@ body {
   line-height: 10vh;
   background-color: lightgrey;
   font-size: 3vh;
-  font-family: "Impact";
+  font-family: "Impact", "Haettenschweiler", "Arial Narrow Bold", sans-serif;
   text-align: center;
 }
 
@@ -135,7 +135,7 @@ body {
   line-height: 10vh;
   background-color: orange;
   font-size: 3vh;
-  font-family: "Impact";
+  font-family: "Impact", "Haettenschweiler", "Arial Narrow Bold", sans-serif;
   text-align: center;
   cursor: pointer;
   border: none;
@@ -145,7 +145,7 @@ body {
   width: 32vw;
   border-radius: 10px;
   background-color: lightgrey;
-  font-family: "Impact";
+  font-family: "Impact", "Haettenschweiler", "Arial Narrow Bold", sans-serif;
   text-align: center;
 }
 
@@ -212,7 +212,7 @@ body {
   width: 100%;
   padding: 1vh 0;
   font-size: 2.5vh;
-  font-family: "Impact";
+  font-family: "Impact", "Haettenschweiler", "Arial Narrow Bold", sans-serif;
   background-color: lightblue;
   border: none;
   border-top: 2px solid #444;
@@ -245,7 +245,7 @@ body {
   text-align: center;
   background-color: black;
   color: white;
-  font-family: "Comic Sans MS";
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
   border-radius: 15px;
 }
 
@@ -277,7 +277,7 @@ body {
   border-radius: 5px;
   font-size: 2em;
   cursor: pointer;
-  font-family: "Comic Sans MS";
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
 }
 
 #dailybutton {
@@ -303,7 +303,7 @@ body {
   z-index: 2;
   background-color: black;
   color: white;
-  font-family: "Comic Sans MS";
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
   font-size: 2.5vh;
   padding: 2vh 3vw;
   border-radius: 15px;
