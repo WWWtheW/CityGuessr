@@ -23,7 +23,7 @@
   <div class="modal-content">
     <h1>Welcome to CityGuessr!</h1>
     <h3>by wwwDw (DM feedback on Discord!)</h3>
-    <button id="dailybutton" onclick="dailymode=true;setupgame()" disabled style="opacity:50%;cursor:not-allowed">Try the Daily Challenge!</button>
+    <button id="dailybutton" onclick="dailymode=true;setupgame()" disabled>Try the Daily Challenge!</button>
     <h2>Or customize your game:</h2>
     <h3>Choose your difficulty:</h3>
     <div class="choicerow" id="difficulty-row">
@@ -102,29 +102,24 @@ function selectMode(num) {
   if (difficulty !== null && mode !== null) playbutton.disabled = false;
 };
 
-window.addEventListener("map-ready", () => {
-  choicelist[4].disabled = false;
-});
-
 // SETUP
 
 var citydata = [];
-var citylist = [];
 var citymarkers = [];
 const popbuckets = [
-  {min: 1000000, label: "Metropolis"},
-  {min: 300000, label: "Major City"},
-  {min: 100000, label: "Regional City"},
-  {min: 10000, label: "Town"},
-  {min: 0, label: "Village"}
+  {min: 1000000, label: "Metropolis (1M+)"},
+  {min: 300000, label: "Major City (300K-1M)"},
+  {min: 100000, label: "Regional City (100K-300K)"},
+  {min: 10000, label: "Town (10K-100K)"},
+  {min: 0, label: "Village (<10K)"}
 ];
 const elevbuckets = [
-  {min: 2000, label: "Mountain"},
-  {min: 1000, label: "Highland"},
-  {min: 300, label: "Upland"},
-  {min: 50, label: "Elevated"},
-  {min: 0, label: "Lowland"},
-  {min: -258, label: "Below Sea Level"}
+  {min: 2000, label: "Mountain (2000m+)"},
+  {min: 1000, label: "Highland (1000-2000m)"},
+  {min: 300, label: "Upland (300-1000m)"},
+  {min: 50, label: "Elevated (50-300m)"},
+  {min: 0, label: "Lowland (0-50m)"},
+  {min: -Infinity, label: "Below Sea Level (<0m)"}
 ];
 const bucketSets = {
   Population: popbuckets,
@@ -136,47 +131,53 @@ var pickedcitydata = {};
 var pickedcitypop = "";
 var pickedcityelev = "";
 
-const daytodiffmap = {
-  0: 3,
-  1: 0,
-  2: 0,
-  3: 1,
-  4: 1,
-  5: 2,
-  6: 2
+const daytodiff = [3, 0, 0, 1, 1, 2, 2]
+
+function resetvars() {
+  citydata = [];
+  citymarkers = [];
+  guesscount = 0;
+  guessindexlist = new Set();
+  curdistmi = null;
+  curdistkm = null;
+  toggledistance(); toggledistance();
+  pickedcityindex = -1;
+  pickedcitydata = {};
+  pickedcitypop = "";
+  pickedcityelev = "";
+  gaveup = false;
+  gameover = false;
+  guesslog = [];
 }
 
 function setupgame() {
-  const mapcanvas = document.querySelectorAll(".maplibregl-canvas")[0];
-  const mapctrl = document.querySelectorAll(".maplibregl-control-container")[0];
+  const masterdata = structuredClone(citydataMASTER);
+  resetvars();
 
   const rng = getDailyRng();
 
   if (dailymode) {
-    difficulty = daytodiffmap[new Date().getUTCDay()];
+    difficulty = daytodiff[new Date().getUTCDay()];
     mode = seededRandomInt(4, rng);
   }
 
-  mapctrl.style.display = "none";
-
   switch (difficulty) {
-    case 0: citydataMASTER.forEach((e) => {if (easyIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
-    case 1: citydataMASTER.forEach((e) => {if (mediumIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
-    case 2: citydataMASTER.forEach((e) => {if (hardIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
-    case 3: citydata = citydataMASTER; break;
+    case 0: masterdata.forEach((e) => {if (easyIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
+    case 1: masterdata.forEach((e) => {if (mediumIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
+    case 2: masterdata.forEach((e) => {if (hardIDs.includes(e["geoname_id"])) citydata.push(e);}); break;
+    case 3: citydata = masterdata; break;
   }
 
   switch (mode) {
-    case 0: break;
-    case 1: mapcanvas.style.display = "none"; break;
+    case 0: createmap(visiblestyle); break;
+    case 1: createmap(blankstyle); break;
     case 2:
-      mapcanvas.style.display = "none";
+      createmap(blankstyle);
       map.dragRotate.disable();
       map.keyboard.disable()
       map.touchZoomRotate.disableRotation();
       map.rotateTo(Math.random() * 270 + 45, {duration: 0});
       break;
-    case 3: document.getElementById("map").style.display = "none"; break;
   }
 
   if (dailymode && mode === 2) map.rotateTo(seededRandomInt(271, rng) + 45, {duration: 0});
@@ -189,7 +190,6 @@ function setupgame() {
 
   for (let i=0;i<citydata.length;i++) {
     createMarker([citydata[i]["coordinates"]["lon"],citydata[i]["coordinates"]["lat"]],"blue");
-    citylist.push(citydata[i]["name"]);
   }
 
   if (!dailymode) pickedcityindex = Math.floor(Math.random() * citydata.length);
@@ -200,11 +200,26 @@ function setupgame() {
 
   console.log(pickedcitydata["name"]);
 
-  pickedcitypop = getBucket("Population", pickedcitydata["population"]);
-  pickedcityelev = getBucket("Elevation", pickedcitydata["elevation"]);
+  pickedcitypop = getbucket("Population", pickedcitydata["population"]);
+  pickedcityelev = getbucket("Elevation", pickedcitydata["elevation"]);
 
   choicemodal.style.display = "none";
 }
+
+// DISABLE IF OFFLINE
+
+var tilesok = false;
+async function probetiles() {
+  try {
+    const r = await fetch("https://api.maptiler.com/tiles/v3/tiles.json?key="+API_KEY, {signal: AbortSignal.timeout(5000)});
+    tilesok = r.ok;
+  } catch {
+    tilesok = false;   // offline, DNS failure, timeout, blocked
+  }
+  //if (seededRandomInt(4, getDailyRng()) !== 0) {document.getElementById("dailybutton").disabled = false;}
+  if (tilesok) {choicelist[4].disabled = false; /*document.getElementById("dailybutton").disabled = false;*/}
+}
+probetiles();
 
 // GAME
 
@@ -225,13 +240,13 @@ function submitguess() {
     guesscount++;
     guesscountdisplay.innerHTML = "Guess count: " + guesscount;
     guessbox.style.backgroundColor = "lime";
-    citymarkers[pickedcityindex].remove();
+    citymarkers[pickedcityindex]?.remove();
     createMarker([pickedcitydata["coordinates"]["lon"],pickedcitydata["coordinates"]["lat"]],"lime");
     updateClues(pickedcitydata);
     logGuess(pickedcitydata["display_name"], pickedcitydata["cou_name_en"], true);
     endGame();
-    setTimeout(replay, 500);
-    setTimeout(dataissues, 4000);
+    replaytimer = setTimeout(replay, 500);
+    issuetimer = setTimeout(dataissues, 4000);
     return;
   } else {
     let cityfound = false;
@@ -242,7 +257,7 @@ function submitguess() {
           console.log("city matched")
           cityfound = true;
           guessindexlist.add(i);
-          citymarkers[i].remove();
+          citymarkers[i]?.remove();
           createMarker([citydata[i]["coordinates"]["lon"],citydata[i]["coordinates"]["lat"]],"red");
           updateClues(citydata[i]);
           logGuess(citydata[i]["display_name"], citydata[i]["cou_name_en"], false);
@@ -287,11 +302,11 @@ function updateClues(data) {
   }
   toggledistance(); toggledistance();
   // population
-  if (getBucket("Population", data["population"]) === pickedcitypop) {
+  if (getbucket("Population", data["population"]) === pickedcitypop) {
     document.getElementById("population").innerHTML = pickedcitypop;
   }
   // elevation
-  if (getBucket("Elevation", data["elevation"]) === pickedcityelev) {
+  if (getbucket("Elevation", data["elevation"]) === pickedcityelev) {
     document.getElementById("elevation").innerHTML = pickedcityelev;
   }
 }
@@ -312,15 +327,18 @@ function toggledistance() { // change from mi to km or v.v.
   if (distmode == 0){
     if (curdistmi === null) distdisplay.innerHTML = "??? mi";
     else if (curdistmi === 0) distdisplay.innerHTML = "0 mi";
-    else distdisplay.innerHTML = "~" + downTo50(curdistmi) + " mi"
+    else if (curdistmi < 50) distdisplay.innerHTML = "<50 mi";
+    else distdisplay.innerHTML = "~" + downto50(curdistmi) + " mi";
   } else if (distmode == 1) {
     if (curdistkm === null) distdisplay.innerHTML = "??? km";
     else if (curdistkm === 0) distdisplay.innerHTML = "0 km";
-    else distdisplay.innerHTML = "~" + downTo50(curdistkm) + " km"
+    else if (curdistkm < 50) distdisplay.innerHTML = "<50 km";
+    else distdisplay.innerHTML = "~" + downto50(curdistkm) + " km";
   } else console.log("shut up")
 }
 
 function createMarker(coordinates, color) { // self-explanatory
+  if (mode === 3) return;
   const tempmarker = new maplibregl.Marker({color:color})
     .setLngLat(coordinates)
     .addTo(map);
@@ -359,8 +377,8 @@ function endGame() {
   curdistkm = 0;
   curdistmi = 0;
   toggledistance(); toggledistance();
-  document.getElementById("population").innerHTML = "Population "+pickedcitydata["population"];
-  document.getElementById("elevation").innerHTML = "Elevation "+pickedcitydata["elevation"];
+  document.getElementById("population").innerHTML = "Population: "+pickedcitydata["population"];
+  document.getElementById("elevation").innerHTML = "Elevation: "+pickedcitydata["elevation"]+"m";
 
   guesslogSummary.innerHTML = "Answer: " + pickedcitydata["display_name"];
   giveupbutton.innerHTML = "New Game";
@@ -369,13 +387,13 @@ function endGame() {
     giveupbutton.style.backgroundColor = "lime";
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
   }
-  giveupbutton.onclick = () => location.reload();
+  giveupbutton.onclick = resetgame;
 }
 
 function giveup() {
   gaveup = true;
   updateClues(pickedcitydata);
-  citymarkers[pickedcityindex].remove();
+  citymarkers[pickedcityindex]?.remove();
   createMarker([pickedcitydata["coordinates"]["lon"],pickedcitydata["coordinates"]["lat"]],"orange");
   endGame();
 }
@@ -384,32 +402,34 @@ function giveup() {
 
 const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme"];
 const modeLabels = ["Normal", "Blind", "Blind/Rotated", "Blank"];
+const daytoname = ["Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
 
 function shareResult() { // share result
   var text;
   const date = new Date();
   const datestr = (date.getUTCMonth()+1)+"/"+date.getUTCDate();
-  const dateweekday = date.getUTCDay();
-  /*if (gaveup) {*/
-    text = `CityGuessr ${dailymode ? dateweekday + " " + datestr : "Practice"}\n${difficultyLabels[difficulty]} • ${modeLabels[mode]}\n`
-      + `${gaveup ? "❌ Gave up after" : "✅ Solved in"} ${guesscount} guess${guesscount === 1 ? "" : "es"}\n`
-      + `Can you beat me?\nhttps://tinyurl.com/City-Guessr`;
-  /*} else {
-    text = `I found the ${dailymode ? datestr+" " : ""}city in CityGuessr in `
-      + `${guesscount} guess${guesscount === 1 ? "" : "es"} `
-      + `(${difficultyLabels[difficulty]}, ${modeLabels[mode]} mode)! Can you beat me?\nhttps://tinyurl.com/City-Guessr`;
-  }*/
+  const dateweekday = daytoname[date.getUTCDay()];
+  text = `CityGuessr ${dailymode ? dateweekday + " " + datestr : "Practice"}\n${difficultyLabels[difficulty]} • ${modeLabels[mode]}\n`
+    + `${gaveup ? "❌ Gave up after" : "✅ Solved in"} ${guesscount} guess${guesscount === 1 ? "" : "es"}\n`
+    + `Can you beat me?\nhttps://tinyurl.com/City-Guessr`;
 
   navigator.clipboard.writeText(text).then(() => {
     alert("Result copied to clipboard!");
+  }).catch(() => {
+    prompt("Copy your result:", text);
   });
 }
 
+var toasttimer = null;
+var replaytimer = null;
+var issuetimer = null;
+
 function showToast(message, duration = 3000) {
+  clearTimeout(toasttimer);
   const toast = document.getElementById("toast");
   toast.innerHTML = message;
   toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), duration);
+  toasttimer = setTimeout(() => toast.classList.remove("show"), duration);
 }
 
 function replay() {
@@ -418,6 +438,48 @@ function replay() {
 
 function dataissues() {
   showToast("Data issues? Shoot wwwDw a message on Discord!", 5000);
+}
+
+// RESET GAME
+
+function resetgame() {
+  resetvars();
+  if (dailymode) {
+    difficulty = null;
+    mode = null;
+    playbutton.disabled = true;
+    choicelist.forEach((e) => {e.classList.remove("selected")});
+    dailymode = false;
+  };
+  if (map) {map.remove(); map = null;}
+
+  guessbox.disabled = false;
+  guessbox.value = "";
+  guessbox.style.backgroundColor = "";
+
+  guessbutton.disabled = false;
+  guesscountdisplay.innerHTML = "Guess count: 0";
+  document.getElementById("population").innerHTML = "Population: ???";
+  document.getElementById("elevation").innerHTML = "Elevation: ???";
+  document.getElementById("firstletter").innerHTML = "First letter: ???";
+  document.getElementById("country").innerHTML = "Country: ???";
+  document.getElementById("timezone").innerHTML = "Timezone: ???";
+  guesslogList.innerHTML = "";
+  guesslogSummary.innerHTML = "Past Guesses (0)";
+  document.getElementById("guesslog").open = false;
+  document.getElementById("sharebutton").style.display = "none";
+
+  giveupbutton.innerHTML = "Give Up";
+  giveupbutton.style.backgroundColor = "";
+  giveupbutton.onclick = giveup;
+
+  clearTimeout(replaytimer);
+  clearTimeout(issuetimer);
+  clearTimeout(toasttimer);
+  document.getElementById("toast").classList.remove("show");
+  confetti.reset();
+
+  choicemodal.style.display = "";
 }
 
 // HELPERS
@@ -440,41 +502,29 @@ function toRad(Value) { // self-explanatory
   return Value * Math.PI / 180;
 }
 
-function downTo50(num) { // round down to the nearest 50
+function downto50(num) { // round down to the nearest 50
   return 50 * Math.floor(num / 50);
 }
 
-function shortNumber(num) { // shorten numbers
-  if (num >= 1e9 && num % 1e9 === 0) return Math.trunc(num / 1e9) + "B";
-  if (num >= 1e9) return (num / 1e9) + "B";
-  if (num >= 1e6 && num % 1e6 === 0) return Math.trunc(num / 1e6) + "M";
-  if (num >= 1e6) return (num / 1e6) + "M";
-  if (num >= 1e3 && num % 1e3 === 0) return Math.trunc(num / 1e3) + "K";
-  if (num >= 1e3) return (num / 1e3) + "K";
-  return String(num);
-}
-
-const accentmap = {ø:"o", ł:"l", ı:"i", đ:"d", ð:"d", æ:"ae", œ:"oe", ß:"ss", þ:"th", ħ:"h"};
+const accentmap = {ø:"o", ł:"l", ı:"i", đ:"d", ð:"d", æ:"ae", œ:"oe", ß:"ss", þ:"th", ħ:"h", ə:"e"};
 function normalize(str) {
   return str
     .toLowerCase()
     .replace(/[øłıđðæœßþħ]/g, c => accentmap[c])
     .normalize("NFD")
     .replace(/\p{Mn}/gu, "")
-    .replace(/[^\p{L}\p{N}]/gu, "");
+    .replace(/[^\p{L}\p{N}]|[ʻʼ]/gu, "");
 }
 
-function getBucket(type, num) {
+function getbucket(type, num) {
   const bucketdata = bucketSets[type];
   if (!bucketdata) return "shut up";
 
-  bucketnum = bucketdata.length;
+  const bucketnum = bucketdata.length;
 
-  if (num >= bucketdata[0]["min"]) return bucketdata[0]["label"]+" ("+shortNumber(bucketdata[0]["min"])+"+"+(type === "Elevation" ? "m" : "")+")";
-  if (num < bucketdata[bucketnum-2]["min"]) return bucketdata[bucketnum-1]["label"]+" (<"+bucketdata[bucketnum-2]["min"]+(type === "Elevation" ? "m" : "")+")";
-  for (let i=1;i<bucketnum-1;i++) {
+  for (let i=0;i<bucketnum;i++) {
     if (num >= bucketdata[i]["min"]) {
-      return bucketdata[i]["label"]+" ("+shortNumber(bucketdata[i]["min"])+"-"+shortNumber(bucketdata[i-1]["min"])+(type === "Elevation" ? "m" : "")+")";
+      return bucketdata[i]["label"];
     }
   }
 }
