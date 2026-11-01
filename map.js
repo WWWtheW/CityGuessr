@@ -208,6 +208,7 @@ const map = new maplibregl.Map({
   ],
   "id": "ciwigmbgt00fw2ps58s6klalp"
 },
+maxZoom: 10,
 });
 map.addControl(new maplibregl.NavigationControl());
 
